@@ -28,7 +28,7 @@ AdobeDPSAPI.prototype.standardHeaders = function standardHeaders(options) {
 }
 AdobeDPSAPI.prototype.request = function request(type, url, options, callback) {
   var defaultOptions = {
-    headers: this.standardHeaders(this.credentials),
+    headers: this.standardHeaders(),
     accessToken: this.credentials.access_token
   };
   this.rest[type](
@@ -44,13 +44,23 @@ AdobeDPSAPI.prototype.request = function request(type, url, options, callback) {
     }
   });
 }
-AdobeDPSAPI.prototype.getPublications = function getPublications(callback) {
-  this.request('get', "https://authorization.publish.adobe.io/permissions", {headers: {'Authorization': 'bearer '+this.credentials.access_token}}, callback);
-}
+// shortcut function for GET requests to the publication server
 AdobeDPSAPI.prototype.publicationGet = function publicationGet(entityUri, callback) {
   var uri = "https://pecs.publish.adobe.io/publication/"+this.credentials.publication_id+"/"+entityUri;
   this.request('get', uri, {}, callback);
 }
+// retrieve all publications
+AdobeDPSAPI.prototype.getPublications = function getPublications(callback) {
+  this.request('get', "https://authorization.publish.adobe.io/permissions", {headers: {'Authorization': 'bearer '+this.credentials.access_token}}, 
+    function(data) {
+      if (typeof data.code !== "undefined" && data.code.indexOf("Exception") > -1) {
+        throw new Error(data.message + " (" + data.code + ")");
+      }
+      callback(data);
+    }
+  );
+}
+// get a new access token
 AdobeDPSAPI.prototype.getAccessToken = function getAccessToken(callback) {
   this.rest.post(
     "https://ims-na1.adobelogin.com/ims/token/v1/?grant_type=device"+
@@ -66,6 +76,9 @@ AdobeDPSAPI.prototype.getAccessToken = function getAccessToken(callback) {
     }
   )
   .on('complete', function(data) {
+    if (typeof data.code !== "undefined" && data.code.indexOf("Exception") > -1) {
+      throw new Error(data.message + " (" + data.code + ")");
+    }
     if (callback) {
       callback(data);
     }

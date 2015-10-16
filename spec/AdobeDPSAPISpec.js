@@ -1,6 +1,23 @@
 var AdobeDPSAPI = require('../AdobeDPSAPI.js');
 var RestlerMock = require('./RestlerMock.js');
 
+function createValidationFunction(done, expected) {
+  return function(data) {
+    expect(data).toEqual(expected);
+    done();
+  }
+}
+
+function doRequestEvaluation(args) {
+  expect(args.api.rest[args.requestType]).toHaveBeenCalled();
+  var request = args.api.rest.requests.pop();
+  if(args.expectedUrl)
+    expect(request.url).toEqual(args.expectedUrl);
+  if(args.expectedOptions)
+    expect(request.options).toEqual(jasmine.objectContaining(args.expectedOptions));
+  request.complete(args.expectedData);
+}
+
 describe('AdobeDPSAPI', function() {
   var api;
   beforeEach(function() {
@@ -12,6 +29,9 @@ describe('AdobeDPSAPI', function() {
       device_secret: 'dsecret'
     });
     api.rest = new RestlerMock();
+    spyOn(api.rest,'get').and.callThrough();
+    spyOn(api.rest,'post').and.callThrough();
+    spyOn(api.rest,'put').and.callThrough();
   });
   it('creates a session id and populates credentials object', function() {
     expect(api.sessionId).toBeDefined();
@@ -38,32 +58,72 @@ describe('AdobeDPSAPI', function() {
   });
   describe('request', function() {
     it('should call to the given rest function with standard headers', function() {
-      spyOn(api.rest,'get').and.callThrough();
       api.request('get', 'url', {}, function(){});
       var optionsExpected = {
-        headers: api.standardHeaders(api.credentials),
+        headers: api.standardHeaders(),
         accessToken: api.credentials.access_token
       };
       delete optionsExpected.headers['X-DPS-Client-Request-Id']; // random value
+      optionsExpected.headers = jasmine.objectContaining(optionsExpected.headers);
       expect(api.rest.get).toHaveBeenCalledWith("url", jasmine.objectContaining(optionsExpected));
+    });
+    it('should fail on responses that include error_code', function() {
+      api.request('get', 'url', {}, function(){});
+      var request = api.rest.requests.pop();
+      expect(function() {request.complete({error_code: '100', message: 'test'})}).toThrow(new Error("100 test"));
     });
   });
   describe('getPublications', function() {
-    it('should call out to the auth endpoint', function(done) {
-      spyOn(api.rest,'get').and.callThrough();
-      var publications = { publications: [] };
-      api.getPublications(function(data) {
-        // verify that 'complete' is recieving data
-        expect(data).toEqual(publications);
-        done();
+    it('should call out to the auth endpoint and callback with the response', function(done) {
+      var expected = { publications: [] };
+      api.getPublications(createValidationFunction(done, expected));
+      doRequestEvaluation({
+        api: api,
+        done: done,
+        requestType: 'get',
+        expectedData: expected,
+        expectedUrl: 'https://authorization.publish.adobe.io/permissions',
+        expectedOptions: {
+          headers: jasmine.objectContaining({
+            'Authorization': 'bearer '+api.credentials.access_token
+          })
+        }
       });
-      expect(api.rest.get).toHaveBeenCalled();
+    });
+    it('should throw an exception on an error return', function() {
+      var error = { code: 'TestException', message: 'test' };
+      api.getPublications(function(data) {});
       var request = api.rest.requests.pop();
-      // should be reaching out to the proper endpoint
-      expect(request.url).toEqual('https://authorization.publish.adobe.io/permissions');
-      // should be providing the correct access token
-      expect(request.options.headers.Authorization).toEqual('bearer '+api.credentials.access_token);
-      request.complete(publications, {});
+      expect(function() {request.complete(error);}).toThrow(new Error("test (TestException)"));
+    });
+  });
+  describe('getAccessToken', function() {
+    it('should call out to the auth endpoint and callback with the response', function(done) {
+      var expected = { access_token: 'test', refresh_token: 'refresh' };
+      var expectedUrl = "https://ims-na1.adobelogin.com/ims/token/v1/?grant_type=device"+
+        "&client_id="+api.credentials.client_id+
+        '&client_secret='+api.credentials.client_secret+
+        '&device_token='+api.credentials.device_secret+
+        '&device_id='+api.credentials.device_id;
+      api.getAccessToken(createValidationFunction(done, expected));
+      doRequestEvaluation({
+        api: api,
+        done: done,
+        requestType: 'post',
+        expectedData: expected,
+        expectedUrl: expectedUrl,
+        expectedOptions: {
+          headers: jasmine.objectContaining({
+            'Content-Type': 'application/x-www-form-urlencoded'
+          })
+        }
+      });
+    });
+    it('should throw an exception on an error return', function() {
+      var error = { code: 'TestException', message: 'test' };
+      api.getAccessToken(function(data) {});
+      var request = api.rest.requests.pop();
+      expect(function() {request.complete(error);}).toThrow(new Error("test (TestException)"));
     });
   });
 })
