@@ -3,6 +3,7 @@
   "description": "Library for Adobe DPS 2015's API",
   "version": "0.0.1",
   "homepage": "https://github.com/SixDimensions/AdobeDPSAPI-js",
+  "main": "AdobeDPSAPI.js",
   "author": {
     "name": "Charlie Wagner",
     "email": "charlie.wagner@6dglobal.com"
