@@ -221,7 +221,7 @@ AdobeDPSAPI.prototype.putArticleImage = function putArticleImage(article, imageP
   this.rest.put(
     "https://pecs.publish.adobe.io"+article._links.contentUrl.href+"images/thumbnail",
     { // options
-      headers: this.standardHeaders(api, {
+      headers: this.standardHeaders({
         "Content-Type": this.mimetypes[imagePath.match(/([a-zA-Z]{3})$/)[0]],
         "Content-Length": fileSize,
         "X-DPS-Upload-Id": uploadId
