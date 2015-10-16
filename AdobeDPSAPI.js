@@ -90,7 +90,7 @@ AdobeDPSAPI.prototype.uploadArticle = function uploadArticle(articleId, fileName
   this.rest.put(
     "https://ings.publish.adobe.io/publication/"+this.credentials.publication_id+"/article/"+articleId+"/contents/folio",
     { // options
-      headers: this.standardHeaders(api, {
+      headers: this.standardHeaders({
         "Content-Type": "application/vnd.adobe.article+zip",
         "Content-Length": fileSize
       }),
@@ -121,6 +121,7 @@ AdobeDPSAPI.prototype.getCollectionElements = function getCollectionElements(col
   this.publicationGet('collection/'+collection.entityName+";version="+collection.version+"/contentElements", callback);
 }
 AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
+  var self = this;
   if (typeof entityUri.length === 'undefined') {
     entityUri = [entityUri];
   }
@@ -132,12 +133,12 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
   var retrieved = 0;
   function processEntity(data) {
     if (typeof data.version !== "undefined") {
-      body.entities.push("/publication/"+this.credentials.publication_id+"/"+data.entityType+"/"+data.entityName+";version="+data.version);
+      body.entities.push("/publication/"+self.credentials.publication_id+"/"+data.entityType+"/"+data.entityName+";version="+data.version);
     }
     retrieved++;
     if (retrieved === entityUri.length) {
       var requestOptions = { data: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } };
-      this.request('post', "https://pecs.publish.adobe.io/job", requestOptions, callback);
+      self.request('post', "https://pecs.publish.adobe.io/job", requestOptions, callback);
     }
   }
   for(var i = 0; i < entityUri.length; i++) {
@@ -178,6 +179,7 @@ AdobeDPSAPI.prototype.putArticle = function putArticle(data, callback) {
   });
 }
 AdobeDPSAPI.prototype.addArticleToCollection = function addArticleToCollection(articleId, collectionId, callback) {
+  var self = this;
   this.getCollection(collectionId, function(collection) {
     if (collection.code === 'EntityNotFoundException') {
       throw new Error("Collection " + collectionId + " not found.");
@@ -185,8 +187,8 @@ AdobeDPSAPI.prototype.addArticleToCollection = function addArticleToCollection(a
     if (typeof collection.code !== "undefined" && collection.code.indexOf("Exception") > -1) {
       throw new Error(collection.message + " (" + collection.code + ")");
     }
-    this.getCollectionElements(collection, function(contentElements) {
-      this.getArticle(articleId, function(article) {
+    self.getCollectionElements(collection, function(contentElements) {
+      self.getArticle(articleId, function(article) {
         if (typeof article.code !== "undefined" && article.code.indexOf("Exception") > -1) {
           throw new Error(article.message + " (" + article.code + ")");
         }
@@ -199,10 +201,10 @@ AdobeDPSAPI.prototype.addArticleToCollection = function addArticleToCollection(a
         if (typeof contentElements === 'undefined' || typeof contentElements.length === 'undefined') {
           contentElements = [];
         }
-        contentElements.push( { href: '/publication/'+this.credentials.publication_id+'/article/'+article.entityName+';version='+article.version } );
-        this.request( 
+        contentElements.push( { href: '/publication/'+self.credentials.publication_id+'/article/'+article.entityName+';version='+article.version } );
+        self.request( 
           'put', 
-          "https://pecs.publish.adobe.io/publication/"+this.credentials.publication_id+'/collection/'+collection.entityName+";version="+collection.version+"/contentElements", 
+          "https://pecs.publish.adobe.io/publication/"+self.credentials.publication_id+'/collection/'+collection.entityName+";version="+collection.version+"/contentElements", 
           { 
             data: JSON.stringify(contentElements),
             headers: {
@@ -218,6 +220,7 @@ AdobeDPSAPI.prototype.putArticleImage = function putArticleImage(article, imageP
   var imageFile = fs.statSync(imagePath);
   var fileSize = imageFile["size"];
   var uploadId = uuid.v4();
+  var self = this;
   this.rest.put(
     "https://pecs.publish.adobe.io"+article._links.contentUrl.href+"images/thumbnail",
     { // options
@@ -232,27 +235,27 @@ AdobeDPSAPI.prototype.putArticleImage = function putArticleImage(article, imageP
   )
   .on('complete', function(data, response) {
     // get the most up to date article data
-    this.getArticle(article.entityName, function(article) {
+    self.getArticle(article.entityName, function(article) {
       if (typeof article.code !== "undefined" && article.code.indexOf("Exception") > -1) {
         throw new Error(article.message + " (" + article.code + ")");
       }
       // add the reference to the content we just created
       article['_links']['thumbnail'] = { href: 'contents/images/thumbnail' };
       // save it to the article
-      this.putArticle(article, function(data) {
+      self.putArticle(article, function(data) {
         if (typeof data.code !== "undefined" && data.code.indexOf("Exception") > -1) {
           throw new Error(data.message + " (" + data.code + ")");
         }
         // get the new version for the article
-        this.getArticle(article.entityName, function(article) {
+        self.getArticle(article.entityName, function(article) {
           // seal() the image upload
-          this.rest.put(
-            "https://pecs.publish.adobe.io/publication/"+this.credentials.publication_id+"/article/"+article.entityName+";version="+article.version+"/contents",
+          self.rest.put(
+            "https://pecs.publish.adobe.io/publication/"+self.credentials.publication_id+"/article/"+article.entityName+";version="+article.version+"/contents",
             {
-              headers: this.standardHeaders(api, { 
+              headers: self.standardHeaders({ 
                 "X-DPS-Upload-Id": uploadId
               }),
-              accessToken: this.credentials.access_token
+              accessToken: self.credentials.access_token
             }
           )
           .on('complete', function(data, other) {
