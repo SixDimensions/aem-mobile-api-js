@@ -64,6 +64,7 @@ AdobeDPSAPI.prototype.getPublications = function getPublications(callback) {
 AdobeDPSAPI.prototype.getAccessToken = function getAccessToken(callback) {
   this.rest.post(
     "https://ims-na1.adobelogin.com/ims/token/v1/?grant_type=device"+
+    "&scope=AdobeID,openid"+
     "&client_id="+this.credentials.client_id+
     '&client_secret='+this.credentials.client_secret+
     '&device_token='+this.credentials.device_secret+
