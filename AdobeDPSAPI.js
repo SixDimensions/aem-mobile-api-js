@@ -156,7 +156,11 @@ AdobeDPSAPI.prototype.putCollection = function putCollection(data, callback) {
   if (typeof data.title === 'undefined') {
     data.title = data.entityName;
   }
-  var url = "https://pecs.publish.adobe.io/publication/"+this.credentials.publication_id+"/collection/"+data.entityName;
+  data.entityType="collection";
+  this.putEntity(data, callback);
+}
+AdobeDPSAPI.prototype.putEntity = function putEntity(data, callback) {
+  var url = "https://pecs.publish.adobe.io/publication/"+this.credentials.publication_id+"/"+data.entityType+"/"+data.entityName;
   if (data.version) {
     url+=";version="+data.version;
   }
@@ -168,7 +172,6 @@ AdobeDPSAPI.prototype.putCollection = function putCollection(data, callback) {
   };
   this.request('put', url, requestOptions, function(response) {
     if (typeof response.code !== "undefined" && response.code.indexOf("Exception") > -1) {
-      console.log(response);
       throw new Error(response.message + " (" + response.code + ")");
     }
     callback(response);
@@ -190,22 +193,8 @@ AdobeDPSAPI.prototype.putArticle = function putArticle(data, callback) {
   if (typeof data.title === 'undefined') {
     data.title = data.entityName;
   }
-  var url = "https://pecs.publish.adobe.io/publication/"+this.credentials.publication_id+"/article/"+data.entityName;
-  if (data.version) {
-    url+=";version="+data.version;
-  }
-  var requestOptions = { 
-    data: JSON.stringify(data),
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  };
-  this.request('put', url, requestOptions, function(response) {
-    if (typeof response.code !== "undefined" && response.code.indexOf("Exception") > -1) {
-      throw new Error(response.message + " (" + response.code + ")");
-    }
-    callback(response);
-  });
+  data.entityType="article";
+  this.putEntity(data, callback);
 }
 AdobeDPSAPI.prototype.addArticleToCollection = function addArticleToCollection(articleId, collectionId, callback) {
   var self = this;
@@ -245,13 +234,13 @@ AdobeDPSAPI.prototype.addArticleToCollection = function addArticleToCollection(a
     });
   });
 }
-AdobeDPSAPI.prototype.putArticleImage = function putArticleImage(article, imagePath, callback) {
+AdobeDPSAPI.prototype.putImage = function putImage(entity, imagePath, callback) {
   var imageFile = fs.statSync(imagePath);
   var fileSize = imageFile["size"];
   var uploadId = uuid.v4();
   var self = this;
   this.rest.put(
-    "https://pecs.publish.adobe.io"+article._links.contentUrl.href+"images/thumbnail",
+    "https://pecs.publish.adobe.io"+entity._links.contentUrl.href+"images/thumbnail",
     { // options
       headers: this.standardHeaders({
         "Content-Type": this.mimetypes[imagePath.match(/([a-zA-Z]{3})$/)[0]],
@@ -263,23 +252,23 @@ AdobeDPSAPI.prototype.putArticleImage = function putArticleImage(article, imageP
     }
   )
   .on('complete', function(data, response) {
-    // get the most up to date article data
-    self.getArticle(article.entityName, function(article) {
-      if (typeof article.code !== "undefined" && article.code.indexOf("Exception") > -1) {
-        throw new Error(article.message + " (" + article.code + ")");
+    // get the most up to date entity data
+    self.publicationGet(entity.entityType+"/"+entity.entityName, function(entity) {
+      if (typeof entity.code !== "undefined" && entity.code.indexOf("Exception") > -1) {
+        throw new Error(entity.message + " (" + entity.code + ")");
       }
       // add the reference to the content we just created
-      article['_links']['thumbnail'] = { href: 'contents/images/thumbnail' };
-      // save it to the article
-      self.putArticle(article, function(data) {
+      entity['_links']['thumbnail'] = { href: 'contents/images/thumbnail' };
+      // save it to the entity
+      self.putEntity(entity, function(data) {
         if (typeof data.code !== "undefined" && data.code.indexOf("Exception") > -1) {
           throw new Error(data.message + " (" + data.code + ")");
         }
-        // get the new version for the article
-        self.getArticle(article.entityName, function(article) {
+        // get the new version for the entity
+        self.publicationGet(entity.entityType+"/"+entity.entityName, function(entity) {
           // seal() the image upload
           self.rest.put(
-            "https://pecs.publish.adobe.io/publication/"+self.credentials.publication_id+"/article/"+article.entityName+";version="+article.version+"/contents",
+            "https://pecs.publish.adobe.io/publication/"+self.credentials.publication_id+"/"+entity.entityType+"/"+entity.entityName+";version="+entity.version+"/contents",
             {
               headers: self.standardHeaders({ 
                 "X-DPS-Upload-Id": uploadId
@@ -299,6 +288,9 @@ AdobeDPSAPI.prototype.putArticleImage = function putArticleImage(article, imageP
       });
     });
   });
+}
+AdobeDPSAPI.prototype.putArticleImage = function putArticleImage(article, imagePath, callback) {
+  this.putImage(article, imagePath, callback);
 }
 
 module.exports = AdobeDPSAPI;
