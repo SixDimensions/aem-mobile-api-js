@@ -146,6 +146,34 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
     this.publicationGet(entityUri[i], processEntity);
   }
 }
+AdobeDPSAPI.prototype.putCollection = function putCollection(data, callback) {
+  if (typeof data.entityType === 'undefined') {
+    data.entityType = 'collection';
+  }
+  if (typeof data.importance === 'undefined') {
+    data.importance = 'normal';
+  }
+  if (typeof data.title === 'undefined') {
+    data.title = data.entityName;
+  }
+  var url = "https://pecs.publish.adobe.io/publication/"+this.credentials.publication_id+"/collection/"+data.entityName;
+  if (data.version) {
+    url+=";version="+data.version;
+  }
+  var requestOptions = { 
+    data: JSON.stringify(data),
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  };
+  this.request('put', url, requestOptions, function(response) {
+    if (typeof response.code !== "undefined" && response.code.indexOf("Exception") > -1) {
+      console.log(response);
+      throw new Error(response.message + " (" + response.code + ")");
+    }
+    callback(response);
+  });
+}
 AdobeDPSAPI.prototype.putArticle = function putArticle(data, callback) {
   if (typeof data.accessState === 'undefined') { 
     data.accessState = 'free';
