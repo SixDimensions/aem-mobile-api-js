@@ -49,6 +49,11 @@ AdobeDPSAPI.prototype.publicationGet = function publicationGet(entityUri, callba
   var uri = "https://pecs.publish.adobe.io/publication/"+this.credentials.publication_id+"/"+entityUri;
   this.request('get', uri, {}, callback);
 }
+// shortcut function for GET requests to the publication server
+AdobeDPSAPI.prototype.getStatus = function getStatus(entityUri, callback) {
+  var uri = "https://pecs.publish.adobe.io/status/"+this.credentials.publication_id+"/"+entityUri;
+  this.request('get', uri, {}, callback);
+}
 // retrieve all publications
 AdobeDPSAPI.prototype.getPublications = function getPublications(callback) {
   this.request('get', "https://authorization.publish.adobe.io/permissions", {headers: {'Authorization': 'bearer '+this.credentials.access_token}}, 
@@ -123,28 +128,59 @@ AdobeDPSAPI.prototype.getCollectionElements = function getCollectionElements(col
 }
 AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
   var self = this;
-  if (typeof entityUri.length === 'undefined') {
+  if (!Array.isArray(entityUri)) {
     entityUri = [entityUri];
   }
-  var body = {
-    "workflowType": "publish",
-    "entities": [],
-    "publicationId": this.credentials.publication_id
-  };
-  var retrieved = 0;
+
+  // checks to see if we have successfully published the article before moving on
+  function checkStatus(uri, timesTried) {
+    if (typeof timesTried === "undefined")
+      timesTried = 0;
+    if (timesTried > 10) {
+      console.log('Failed to wait for publishing to finish. (Tries exceeded)');
+      return consumeEntity();
+    }
+    self.getStatus(uri, function(data) {
+      for(var i = 0; i < data.length; i++) {
+        var eventDate = new Date(data[i].eventDate);
+        if (data[i].aspect == 'publishing' && data[i].eventType=='success' && Date.now() - eventDate.getTime() < 10000) {
+          console.log(uri+" has been published.");
+          return consumeEntity();
+        }
+      }
+      setTimeout(function() {
+        checkStatus(uri, timesTried++);
+      }, 500);
+    });
+  }
+  // use the retrieved information to publish
   function processEntity(data) {
+    if (typeof data.code !== "undefined" && data.code.indexOf("Exception") > -1) {
+      console.log('Error: ' + data.message + " (" + data.code + ")");
+      consumeEntity();
+    }
+    var body = {
+      "workflowType": "publish",
+      "entities": [],
+      "publicationId": self.credentials.publication_id
+    };
     if (typeof data.version !== "undefined") {
       body.entities.push("/publication/"+self.credentials.publication_id+"/"+data.entityType+"/"+data.entityName+";version="+data.version);
     }
-    retrieved++;
-    if (retrieved === entityUri.length) {
-      var requestOptions = { data: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } };
-      self.request('post', "https://pecs.publish.adobe.io/job", requestOptions, callback);
+    var requestOptions = { data: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } };
+    self.request('post', "https://pecs.publish.adobe.io/job", requestOptions, function() {
+      checkStatus(data.entityType+"/"+data.entityName);
+    });
+  }
+  // eat a uri from the array
+  function consumeEntity() {
+    if (!entityUri || entityUri.length <= 0) {
+      console.log('Done publishing');
+      return callback();
     }
+    self.publicationGet(entityUri.shift(), processEntity);
   }
-  for(var i = 0; i < entityUri.length; i++) {
-    this.publicationGet(entityUri[i], processEntity);
-  }
+  consumeEntity();
 }
 AdobeDPSAPI.prototype.putCollection = function putCollection(data, callback) {
   if (typeof data.entityType === 'undefined') {
@@ -234,13 +270,16 @@ AdobeDPSAPI.prototype.addArticleToCollection = function addArticleToCollection(a
     });
   });
 }
-AdobeDPSAPI.prototype.putImage = function putImage(entity, imagePath, callback) {
+AdobeDPSAPI.prototype.putImage = function putImage(entity, imagePath, type, callback) {
   var imageFile = fs.statSync(imagePath);
   var fileSize = imageFile["size"];
   var uploadId = uuid.v4();
   var self = this;
+  if (type !== "background" && type !== 'thumbnail') {
+    throw new Error("Incorrect image type");
+  }
   this.rest.put(
-    "https://pecs.publish.adobe.io"+entity._links.contentUrl.href+"images/thumbnail",
+    "https://pecs.publish.adobe.io"+entity._links.contentUrl.href+"images/"+type,
     { // options
       headers: this.standardHeaders({
         "Content-Type": this.mimetypes[imagePath.match(/([a-zA-Z]{3})$/)[0]],
@@ -258,7 +297,7 @@ AdobeDPSAPI.prototype.putImage = function putImage(entity, imagePath, callback) 
         throw new Error(entity.message + " (" + entity.code + ")");
       }
       // add the reference to the content we just created
-      entity['_links']['thumbnail'] = { href: 'contents/images/thumbnail' };
+      entity['_links'][type] = { href: 'contents/images/'+type };
       // save it to the entity
       self.putEntity(entity, function(data) {
         if (typeof data.code !== "undefined" && data.code.indexOf("Exception") > -1) {
@@ -290,7 +329,7 @@ AdobeDPSAPI.prototype.putImage = function putImage(entity, imagePath, callback) 
   });
 }
 AdobeDPSAPI.prototype.putArticleImage = function putArticleImage(article, imagePath, callback) {
-  this.putImage(article, imagePath, callback);
+  this.putImage(article, imagePath, "thumbnail", callback);
 }
 
 module.exports = AdobeDPSAPI;
