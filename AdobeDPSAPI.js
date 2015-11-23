@@ -4,6 +4,12 @@ var fs = require('fs');
 var _ = require('lodash');
 
 function AdobeDPSAPI(credentials) {
+  this.options = {
+    publish: {
+      maxRetries: 15,
+      timeBetweenRequests: 3000
+    }
+  }
   this.credentials = credentials;
   this.mimetypes = {
     png: "image/png",
@@ -138,7 +144,7 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
   function checkStatus(uri, timesTried) {
     if (typeof timesTried === "undefined")
       timesTried = 0;
-    if (timesTried > 10) {
+    if (timesTried > self.options.publish.maxRetries) {
       console.log('Failed to wait for publishing to finish. (Tries exceeded)');
       return consumeEntity();
     }
@@ -160,7 +166,7 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
       console.log("Waiting... ("+status+")");
       setTimeout(function() {
         checkStatus(uri, timesTried+1);
-      }, 2000);
+      }, self.options.publish.timeBetweenRequests);
     });
   }
   function findLastEvent(uri, callback) {
