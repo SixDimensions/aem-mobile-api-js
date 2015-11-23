@@ -131,7 +131,9 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
   if (!Array.isArray(entityUri)) {
     entityUri = [entityUri];
   }
-
+  // duplicate the array so we dont destroy the original
+  var entityUri = JSON.parse(JSON.stringify(entityUri))
+  var lastPublishTime = 0;
   // checks to see if we have successfully published the article before moving on
   function checkStatus(uri, timesTried) {
     if (typeof timesTried === "undefined")
@@ -141,17 +143,36 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
       return consumeEntity();
     }
     self.getStatus(uri, function(data) {
+      var status = 'unknown';
       for(var i = 0; i < data.length; i++) {
         var eventDate = new Date(data[i].eventDate);
-        if (data[i].aspect == 'publishing' && data[i].eventType=='success' && Date.now() - eventDate.getTime() < 10000) {
-          console.log(uri+" has been published.");
-          return consumeEntity();
+        if (eventDate.getTime() > lastPublishTime && data[i].aspect == 'publishing' && data[i].eventType=='success') {
+          console.log("Successfully published "+uri)
+          return consumeEntity();  
+        }
+        if (status != 'ingestion' && data[i].aspect == 'publishing' && data[i].eventType=='progress') {
+          status = 'publishing';
+        }
+        if (data[i].aspect == 'ingestion' && data[i].eventType=='progress') {
+          status = 'ingestion';
         }
       }
+      console.log("Waiting... ("+status+")");
       setTimeout(function() {
-        checkStatus(uri, timesTried++);
-      }, 500);
+        checkStatus(uri, timesTried+1);
+      }, 2000);
     });
+  }
+  function findLastEvent(uri, callback) {
+    lastPublishTime = 0;
+    self.getStatus(uri, function(data) {
+      for(var i = 0; i < data.length; i++) {
+        if (data[i].aspect == 'publishing' && data[i].eventType=='success') {
+          lastPublishTime = (new Date(data[i].eventDate)).getTime();
+        }
+      }
+      callback();
+    })
   }
   // use the retrieved information to publish
   function processEntity(data) {
@@ -168,15 +189,21 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
       body.entities.push("/publication/"+self.credentials.publication_id+"/"+data.entityType+"/"+data.entityName+";version="+data.version);
     }
     var requestOptions = { data: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } };
-    self.request('post', "https://pecs.publish.adobe.io/job", requestOptions, function() {
-      checkStatus(data.entityType+"/"+data.entityName);
-    });
+    // get the last publish time before we publish
+    findLastEvent(data.entityType+"/"+data.entityName, function() {
+      // then publish after we have it
+      self.request('post', "https://pecs.publish.adobe.io/job", requestOptions, function() {
+        checkTime = Date.now();
+        console.log('Checking '+data.entityType+"/"+data.entityName);
+        checkStatus(data.entityType+"/"+data.entityName);
+      });
+    })
   }
   // eat a uri from the array
   function consumeEntity() {
     if (!entityUri || entityUri.length <= 0) {
       console.log('Done publishing');
-      return callback();
+      return callback({});
     }
     self.publicationGet(entityUri.shift(), processEntity);
   }
