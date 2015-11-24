@@ -8,6 +8,10 @@ function AdobeDPSAPI(credentials) {
     publish: {
       maxRetries: 15,
       timeBetweenRequests: 3000
+    },
+    uploadArticle: {
+      maxRetries: 20,
+      timeBetweenRequests: 5000
     }
   }
   this.credentials = credentials;
@@ -99,21 +103,62 @@ AdobeDPSAPI.prototype.getAccessToken = function getAccessToken(callback) {
 AdobeDPSAPI.prototype.uploadArticle = function uploadArticle(articleId, fileName, callback) {
   var articleFile = fs.statSync(fileName);
   var fileSize = articleFile["size"];
-  this.rest.put(
-    "https://ings.publish.adobe.io/publication/"+this.credentials.publication_id+"/article/"+articleId+"/contents/folio",
-    { // options
-      headers: this.standardHeaders({
-        "Content-Type": "application/vnd.adobe.article+zip",
-        "Content-Length": fileSize
-      }),
-      data: fs.readFileSync(fileName),
-      accessToken: this.credentials.access_token
+  var lastIngestTime = 0;
+  var articleData = null;
+  var self = this;
+  function checkStatus(uri, timesTried) {
+    if (typeof timesTried === "undefined")
+      timesTried = 0;
+    if (timesTried > self.options.uploadArticle.maxRetries) {
+      console.log('Failed to wait for ingestion to finish. (Tries exceeded)');
+      return callback(articleData);
     }
-  )
-  .on('complete', function(data) {
-    if (callback) {
-      callback(data);
-    }
+    setTimeout(function() {
+      self.getStatus(uri, function(data) {
+        var status = 'unknown';
+        for(var i = 0; i < data.length; i++) {
+          var eventDate = new Date(data[i].eventDate);
+          if (eventDate.getTime() > lastIngestTime && data[i].aspect == 'ingestion' && data[i].eventType=='success') {
+            console.log("Successfully ingested "+uri)
+            return callback(articleData);  
+          }
+          if (data[i].aspect == 'ingestion' && data[i].eventType=='progress') {
+            status = 'ingestion';
+          }
+        }
+        console.log("Waiting... ("+status+")");
+        checkStatus(uri, timesTried+1);
+      });
+    }, self.options.uploadArticle.timeBetweenRequests);
+  }
+  function findLastEvent(uri, callback) {
+    lastIngestTime = 0;
+    self.getStatus(uri, function(data) {
+      for(var i = 0; i < data.length; i++) {
+        if (data[i].aspect == 'ingestion' && data[i].eventType=='success') {
+          lastIngestTime = (new Date(data[i].eventDate)).getTime();
+        }
+      }
+      callback();
+    })
+  }
+  var uri = "article/"+articleId;
+  findLastEvent(uri, function() {
+    self.rest.put(
+      "https://ings.publish.adobe.io/publication/"+self.credentials.publication_id+"/"+uri+"/contents/folio",
+      { // options
+        headers: self.standardHeaders({
+          "Content-Type": "application/vnd.adobe.article+zip",
+          "Content-Length": fileSize
+        }),
+        data: fs.readFileSync(fileName),
+        accessToken: self.credentials.access_token
+      }
+    )
+    .on('complete', function(data) {
+      articleData = data;
+      checkStatus(uri);  
+    });
   });
 }
 AdobeDPSAPI.prototype.getPermissions = function getPermissions(callback) {
@@ -148,26 +193,26 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
       console.log('Failed to wait for publishing to finish. (Tries exceeded)');
       return consumeEntity();
     }
-    self.getStatus(uri, function(data) {
-      var status = 'unknown';
-      for(var i = 0; i < data.length; i++) {
-        var eventDate = new Date(data[i].eventDate);
-        if (eventDate.getTime() > lastPublishTime && data[i].aspect == 'publishing' && data[i].eventType=='success') {
-          console.log("Successfully published "+uri)
-          return consumeEntity();  
+    setTimeout(function() {
+      self.getStatus(uri, function(data) {
+        var status = 'unknown';
+        for(var i = 0; i < data.length; i++) {
+          var eventDate = new Date(data[i].eventDate);
+          if (eventDate.getTime() > lastPublishTime && data[i].aspect == 'publishing' && data[i].eventType=='success') {
+            console.log("Successfully published "+uri)
+            return consumeEntity();  
+          }
+          if (status != 'ingestion' && data[i].aspect == 'publishing' && data[i].eventType=='progress') {
+            status = 'publishing';
+          }
+          if (data[i].aspect == 'ingestion' && data[i].eventType=='progress') {
+            status = 'ingestion';
+          }
         }
-        if (status != 'ingestion' && data[i].aspect == 'publishing' && data[i].eventType=='progress') {
-          status = 'publishing';
-        }
-        if (data[i].aspect == 'ingestion' && data[i].eventType=='progress') {
-          status = 'ingestion';
-        }
-      }
-      console.log("Waiting... ("+status+")");
-      setTimeout(function() {
+        console.log("Waiting... ("+status+")");
         checkStatus(uri, timesTried+1);
-      }, self.options.publish.timeBetweenRequests);
-    });
+      });
+    }, self.options.publish.timeBetweenRequests);
   }
   function findLastEvent(uri, callback) {
     lastPublishTime = 0;
