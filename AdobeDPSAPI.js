@@ -214,7 +214,7 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
       });
     }, self.options.publish.timeBetweenRequests);
   }
-  function findLastEvent(uri, callback) {
+  function findLastEvent(uri, innercallback) {
     lastPublishTime = 0;
     self.getStatus(uri, function(data) {
       for(var i = 0; i < data.length; i++) {
@@ -222,7 +222,7 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
           lastPublishTime = (new Date(data[i].eventDate)).getTime();
         }
       }
-      callback();
+      innercallback();
     })
   }
   // use the retrieved information to publish
@@ -243,7 +243,12 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
     // get the last publish time before we publish
     findLastEvent(data.entityType+"/"+data.entityName, function() {
       // then publish after we have it
-      self.request('post', "https://pecs.publish.adobe.io/job", requestOptions, function() {
+      self.request('post', "https://pecs.publish.adobe.io/job", requestOptions, function(response) {
+        if (typeof response.code != 'undefined') {
+          console.log(response.message);
+          console.log("Failed to publish "+data.entityType+"/"+data.entityName);
+          return consumeEntity();
+        }
         checkTime = Date.now();
         console.log('Checking '+data.entityType+"/"+data.entityName);
         checkStatus(data.entityType+"/"+data.entityName);
