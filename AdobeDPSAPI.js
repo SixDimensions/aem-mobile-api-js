@@ -7,7 +7,7 @@ function AdobeDPSAPI(credentials) {
   this.options = {
     publish: {
       maxRetries: 15,
-      timeBetweenRequests: 3000
+      timeBetweenRequests: 5000
     },
     uploadArticle: {
       maxRetries: 20,
@@ -191,7 +191,7 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
       timesTried = 0;
     if (timesTried > self.options.publish.maxRetries) {
       console.log('Failed to wait for publishing to finish. (Tries exceeded)');
-      return consumeEntity();
+      return callback({});
     }
     setTimeout(function() {
       self.getStatus(uri, function(data) {
@@ -200,7 +200,7 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
           var eventDate = new Date(data[i].eventDate);
           if (eventDate.getTime() > lastPublishTime && data[i].aspect == 'publishing' && data[i].eventType=='success') {
             console.log("Successfully published "+uri)
-            return consumeEntity();  
+            return callback({}); 
           }
           if (status != 'ingestion' && data[i].aspect == 'publishing' && data[i].eventType=='progress') {
             status = 'publishing';
@@ -214,7 +214,7 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
       });
     }, self.options.publish.timeBetweenRequests);
   }
-  function findLastEvent(uri, innercallback) {
+  function findLastEvent(uri, callback) {
     lastPublishTime = 0;
     self.getStatus(uri, function(data) {
       for(var i = 0; i < data.length; i++) {
@@ -222,46 +222,49 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
           lastPublishTime = (new Date(data[i].eventDate)).getTime();
         }
       }
-      innercallback();
+      callback();
     })
   }
+  var body = {
+    "workflowType": "publish",
+    "entities": [],
+    "publicationId": self.credentials.publication_id
+  };
+  var lastData = {};
   // use the retrieved information to publish
   function processEntity(data) {
     if (typeof data.code !== "undefined" && data.code.indexOf("Exception") > -1) {
       console.log('Error: ' + data.message + " (" + data.code + ")");
       consumeEntity();
     }
-    var body = {
-      "workflowType": "publish",
-      "entities": [],
-      "publicationId": self.credentials.publication_id
-    };
     if (typeof data.version !== "undefined") {
       body.entities.push("/publication/"+self.credentials.publication_id+"/"+data.entityType+"/"+data.entityName+";version="+data.version);
     }
-    var requestOptions = { data: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } };
-    // get the last publish time before we publish
-    findLastEvent(data.entityType+"/"+data.entityName, function() {
-      // then publish after we have it
-      self.request('post', "https://pecs.publish.adobe.io/job", requestOptions, function(response) {
-        if (typeof response.code != 'undefined') {
-          console.log(response.message);
-          console.log("Failed to publish "+data.entityType+"/"+data.entityName);
-          return consumeEntity();
-        }
-        checkTime = Date.now();
-        console.log('Checking '+data.entityType+"/"+data.entityName);
-        checkStatus(data.entityType+"/"+data.entityName);
-      });
-    })
+    lastData = data;
+    consumeEntity();
   }
   // eat a uri from the array
   function consumeEntity() {
     if (!entityUri || entityUri.length <= 0) {
-      console.log('Done publishing');
-      return callback({});
+      var requestOptions = { data: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } };
+      // get the last publish time before we publish
+      findLastEvent(body.entities[body.entities.length-1].entityType+"/"+body.entities[body.entities.length-1].entityName, function() {
+        // then publish after we have it
+        return self.request('post', "https://pecs.publish.adobe.io/job", requestOptions, function(response) {
+          if (typeof response.code != 'undefined') {
+            console.log(response.message);
+            console.log("Failed to publish");
+            return callback({});
+          }
+          checkTime = Date.now();
+          console.log('Checking '+lastData.entityType+"/"+lastData.entityName);
+          checkStatus(lastData.entityType+"/"+lastData.entityName);
+        });
+      });
+      return;
     }
-    self.publicationGet(entityUri.shift(), processEntity);
+    var entity = entityUri.shift();
+    self.publicationGet(entity, processEntity);
   }
   consumeEntity();
 }
