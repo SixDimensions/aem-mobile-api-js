@@ -193,24 +193,34 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback, unpublish)
     if (typeof timesTried === "undefined")
       timesTried = 0;
     if (timesTried > self.options.publish.maxRetries) {
-      console.log('Failed to wait for publishing to finish. (Tries exceeded)');
+      console.log('Failed to wait for '+aspect+' to finish. (Tries exceeded)');
       return callback({});
     }
     setTimeout(function() {
       self.getStatus(uri, function(data) {
         var status = 'unknown';
         for(var i = 0; i < data.length; i++) {
-          var eventDate = new Date(data[i].eventDate);
-          if (eventDate.getTime() > lastPublishTime && data[i].aspect == 'publishing' && data[i].eventType=='success') {
-            console.log("Successfully published "+uri)
-            return callback({}); 
+          if (aspect=='publishing') {
+            var eventDate = new Date(data[i].eventDate);
+            if (eventDate.getTime() > lastPublishTime && data[i].aspect == aspect && data[i].eventType=='success') {
+              console.log("Successfully "+verb+" "+uri)
+              return callback({}); 
+            }
+            if (status != 'ingestion' && data[i].aspect == aspect && data[i].eventType=='progress') {
+              status = aspect;
+            }
+            if (data[i].aspect == 'ingestion' && data[i].eventType=='progress') {
+              status = 'ingestion';
+            }
           }
-          if (status != 'ingestion' && data[i].aspect == 'publishing' && data[i].eventType=='progress') {
-            status = 'publishing';
+          else if (aspect=='unpublishing') { // unpublishing makes the publishing aspect disappear if it exists
+            if (data[i].aspect == 'publishing') {
+              status = 'unpublishing';
+            }
           }
-          if (data[i].aspect == 'ingestion' && data[i].eventType=='progress') {
-            status = 'ingestion';
-          }
+        }
+        if (aspect == 'unpublishing' && status == 'unknown') {
+          return callback({});
         }
         console.log("Waiting... ("+status+")");
         checkStatus(uri, timesTried+1);
@@ -221,7 +231,7 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback, unpublish)
     lastPublishTime = 0;
     self.getStatus(uri, function(data) {
       for(var i = 0; i < data.length; i++) {
-        if (data[i].aspect == 'publishing' && data[i].eventType=='success') {
+        if (data[i].aspect == aspect && data[i].eventType=='success') {
           lastPublishTime = (new Date(data[i].eventDate)).getTime();
         }
       }
@@ -233,8 +243,12 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback, unpublish)
     "entities": [],
     "publicationId": self.credentials.publication_id
   };
+  var verb = "published";
+  var aspect = "publishing";
   if (unpublish) {
     body.workflowType = "unpublish";
+    verb = "unpublished";
+    aspect = "unpublishing"
   }
   var lastData = {};
   // use the retrieved information to publish
@@ -254,12 +268,12 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback, unpublish)
     if (!entityUri || entityUri.length <= 0) {
       var requestOptions = { data: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } };
       // get the last publish time before we publish
-      findLastEvent(body.entities[body.entities.length-1].entityType+"/"+body.entities[body.entities.length-1].entityName, function() {
+      findLastEvent(lastData.entityType+"/"+lastData.entityName, function() {
         // then publish after we have it
         return self.request('post', "https://pecs.publish.adobe.io/job", requestOptions, function(response) {
-          if (typeof response.code != 'undefined') {
+          if (typeof response.code !== 'undefined') {
             console.log(response.message);
-            console.log("Failed to publish");
+            console.log("Failed "+aspect);
             return callback({});
           }
           checkTime = Date.now();
