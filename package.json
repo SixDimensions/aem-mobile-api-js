@@ -1,7 +1,7 @@
 {
   "name": "adobedpsapi-js",
   "description": "Library for Adobe DPS 2015's API",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "homepage": "https://github.com/SixDimensions/AdobeDPSAPI-js",
   "main": "AdobeDPSAPI.js",
   "author": {

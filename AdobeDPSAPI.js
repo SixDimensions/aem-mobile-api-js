@@ -177,7 +177,10 @@ AdobeDPSAPI.prototype.getCollection = function getCollection(collectionId, callb
 AdobeDPSAPI.prototype.getCollectionElements = function getCollectionElements(collection, callback) {
   this.publicationGet('collection/'+collection.entityName+";version="+collection.version+"/contentElements", callback);
 }
-AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
+AdobeDPSAPI.prototype.unpublish = function unpublish(entityUri, callback) {
+  return this.publish(entityUri, callback, true);
+}
+AdobeDPSAPI.prototype.publish = function publish(entityUri, callback, unpublish) {
   var self = this;
   if (!Array.isArray(entityUri)) {
     entityUri = [entityUri];
@@ -230,6 +233,9 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback) {
     "entities": [],
     "publicationId": self.credentials.publication_id
   };
+  if (unpublish) {
+    body.workflowType = "unpublish";
+  }
   var lastData = {};
   // use the retrieved information to publish
   function processEntity(data) {
