@@ -274,7 +274,7 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback, unpublish)
           if (typeof response.code !== 'undefined') {
             console.log(response.message);
             console.log("Failed "+aspect);
-            return callback({});
+            return callback(response);
           }
           checkTime = Date.now();
           console.log('Checking '+lastData.entityType+"/"+lastData.entityName);
