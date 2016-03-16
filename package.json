@@ -1,24 +1,24 @@
 {
-  "name": "adobedpsapi-js",
-  "description": "Library for Adobe DPS 2015's API",
+  "name": "aem-mobile-api",
+  "description": "Library to access AEM Mobile's API",
   "version": "0.0.11",
-  "homepage": "https://github.com/SixDimensions/AdobeDPSAPI-js",
-  "main": "AdobeDPSAPI.js",
+  "homepage": "https://github.com/SixDimensions/aem-mobile-api-js",
+  "main": "aem-mobile-api.js",
   "author": {
     "name": "Charlie Wagner",
     "email": "charlie.wagner@6dglobal.com"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/SixDimensions/AdobeDPSAPI-js.git"
+    "url": "git://github.com/SixDimensions/aem-mobile-api-js.git"
   },
   "bugs": {
-    "url": "https://github.com/SixDimensions/AdobeDPSAPI-js/issues"
+    "url": "https://github.com/SixDimensions/aem-mobile-api-js/issues"
   },
   "licenses": [
     {
       "type": "MIT",
-      "url": "https://github.com/SixDimensions/AdobeDPSAPI-js/blob/master/LICENSE-MIT"
+      "url": "https://github.com/SixDimensions/aem-mobile-api-js/blob/master/LICENSE-MIT"
     }
   ],
   "engines": {
@@ -35,6 +35,6 @@
   "devDependencies": {
   },
   "keywords": [
-    "adobe dps", "dps", "api"
+    "aem", "aem mobile", "mobile", "adobe dps", "dps", "api"
   ]
 }

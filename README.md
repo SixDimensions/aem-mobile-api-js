@@ -1,8 +1,8 @@
-# AdobeDPSAPI-js
+# AEM Mobile API
 
-> Javascript Library for Adobe DPS 2015's API.
+Javascript Library for accessing AEM Mobile's API.
 
-### This software is currently a work in progress and the API or functionality may change at any time without warning.
+#### This software is currently a work in progress and the API or functionality may change at any time without warning.
 
 ## Getting Started
 

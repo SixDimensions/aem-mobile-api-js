@@ -3,7 +3,7 @@ var uuid = require('node-uuid');
 var fs = require('fs');
 var _ = require('lodash');
 
-function AdobeDPSAPI(credentials) {
+function AEMMobileAPI(credentials) {
   this.options = {
     publish: {
       maxRetries: 15,
@@ -22,7 +22,7 @@ function AdobeDPSAPI(credentials) {
   this.sessionId = uuid.v4();
   this.rest = rest;
 }
-AdobeDPSAPI.prototype.standardHeaders = function standardHeaders(options) {
+AEMMobileAPI.prototype.standardHeaders = function standardHeaders(options) {
   var headers = {
     "X-DPS-Client-Version": '0.0.1',
     'X-DPS-Client-Id': this.credentials.client_id,
@@ -36,7 +36,7 @@ AdobeDPSAPI.prototype.standardHeaders = function standardHeaders(options) {
   }
   return headers;
 }
-AdobeDPSAPI.prototype.request = function request(type, url, options, callback) {
+AEMMobileAPI.prototype.request = function request(type, url, options, callback) {
   var defaultOptions = {
     headers: this.standardHeaders(),
     accessToken: this.credentials.access_token
@@ -55,17 +55,17 @@ AdobeDPSAPI.prototype.request = function request(type, url, options, callback) {
   });
 }
 // shortcut function for GET requests to the publication server
-AdobeDPSAPI.prototype.publicationGet = function publicationGet(entityUri, callback) {
+AEMMobileAPI.prototype.publicationGet = function publicationGet(entityUri, callback) {
   var uri = "https://pecs.publish.adobe.io/publication/"+this.credentials.publication_id+"/"+entityUri;
   this.request('get', uri, {}, callback);
 }
 // shortcut function for GET requests to the publication server
-AdobeDPSAPI.prototype.getStatus = function getStatus(entityUri, callback) {
+AEMMobileAPI.prototype.getStatus = function getStatus(entityUri, callback) {
   var uri = "https://pecs.publish.adobe.io/status/"+this.credentials.publication_id+"/"+entityUri;
   this.request('get', uri, {}, callback);
 }
 // retrieve all publications
-AdobeDPSAPI.prototype.getPublications = function getPublications(callback) {
+AEMMobileAPI.prototype.getPublications = function getPublications(callback) {
   this.request('get', "https://authorization.publish.adobe.io/permissions", {headers: {'Authorization': 'bearer '+this.credentials.access_token}}, 
     function(data) {
       if (typeof data.code !== "undefined" && data.code.indexOf("Exception") > -1) {
@@ -76,7 +76,7 @@ AdobeDPSAPI.prototype.getPublications = function getPublications(callback) {
   );
 }
 // get a new access token
-AdobeDPSAPI.prototype.getAccessToken = function getAccessToken(callback) {
+AEMMobileAPI.prototype.getAccessToken = function getAccessToken(callback) {
   this.rest.post(
     "https://ims-na1.adobelogin.com/ims/token/v1/?grant_type=device"+
     "&scope=AdobeID,openid"+
@@ -100,7 +100,7 @@ AdobeDPSAPI.prototype.getAccessToken = function getAccessToken(callback) {
     }
   });
 }
-AdobeDPSAPI.prototype.uploadArticle = function uploadArticle(articleId, fileName, callback) {
+AEMMobileAPI.prototype.uploadArticle = function uploadArticle(articleId, fileName, callback) {
   var articleFile = fs.statSync(fileName);
   var fileSize = articleFile["size"];
   var lastIngestTime = 0;
@@ -161,26 +161,26 @@ AdobeDPSAPI.prototype.uploadArticle = function uploadArticle(articleId, fileName
     });
   });
 }
-AdobeDPSAPI.prototype.getPermissions = function getPermissions(callback) {
+AEMMobileAPI.prototype.getPermissions = function getPermissions(callback) {
   var uri = "https://authorization.publish.adobe.io/permissions";
   this.request('get', uri, {}, callback);
 }
-AdobeDPSAPI.prototype.getArticle = function getArticle(articleId, callback) {
+AEMMobileAPI.prototype.getArticle = function getArticle(articleId, callback) {
   this.publicationGet('article/'+articleId, callback);
 }
-AdobeDPSAPI.prototype.getCollections = function getCollections(callback) {
+AEMMobileAPI.prototype.getCollections = function getCollections(callback) {
   this.publicationGet('collection', callback);
 }
-AdobeDPSAPI.prototype.getCollection = function getCollection(collectionId, callback) {
+AEMMobileAPI.prototype.getCollection = function getCollection(collectionId, callback) {
   this.publicationGet('collection/'+collectionId, callback);
 }
-AdobeDPSAPI.prototype.getCollectionElements = function getCollectionElements(collection, callback) {
+AEMMobileAPI.prototype.getCollectionElements = function getCollectionElements(collection, callback) {
   this.publicationGet('collection/'+collection.entityName+";version="+collection.version+"/contentElements", callback);
 }
-AdobeDPSAPI.prototype.unpublish = function unpublish(entityUri, callback) {
+AEMMobileAPI.prototype.unpublish = function unpublish(entityUri, callback) {
   return this.publish(entityUri, callback, true);
 }
-AdobeDPSAPI.prototype.publish = function publish(entityUri, callback, unpublish) {
+AEMMobileAPI.prototype.publish = function publish(entityUri, callback, unpublish) {
   var self = this;
   if (!Array.isArray(entityUri)) {
     entityUri = [entityUri];
@@ -288,7 +288,7 @@ AdobeDPSAPI.prototype.publish = function publish(entityUri, callback, unpublish)
   }
   consumeEntity();
 }
-AdobeDPSAPI.prototype.putCollection = function putCollection(data, callback) {
+AEMMobileAPI.prototype.putCollection = function putCollection(data, callback) {
   if (typeof data.entityType === 'undefined') {
     data.entityType = 'collection';
   }
@@ -301,7 +301,7 @@ AdobeDPSAPI.prototype.putCollection = function putCollection(data, callback) {
   data.entityType="collection";
   this.putEntity(data, callback);
 }
-AdobeDPSAPI.prototype.putEntity = function putEntity(data, callback) {
+AEMMobileAPI.prototype.putEntity = function putEntity(data, callback) {
   var url = "https://pecs.publish.adobe.io/publication/"+this.credentials.publication_id+"/"+data.entityType+"/"+data.entityName;
   if (data.version) {
     url+=";version="+data.version;
@@ -319,7 +319,7 @@ AdobeDPSAPI.prototype.putEntity = function putEntity(data, callback) {
     callback(response);
   });
 }
-AdobeDPSAPI.prototype.putArticle = function putArticle(data, callback) {
+AEMMobileAPI.prototype.putArticle = function putArticle(data, callback) {
   if (typeof data.accessState === 'undefined') { 
     data.accessState = 'free';
   }
@@ -338,7 +338,7 @@ AdobeDPSAPI.prototype.putArticle = function putArticle(data, callback) {
   data.entityType="article";
   this.putEntity(data, callback);
 }
-AdobeDPSAPI.prototype.addArticleToCollection = function addArticleToCollection(articleId, collectionId, callback) {
+AEMMobileAPI.prototype.addArticleToCollection = function addArticleToCollection(articleId, collectionId, callback) {
   var self = this;
   this.getCollection(collectionId, function(collection) {
     if (collection.code === 'EntityNotFoundException') {
@@ -376,7 +376,7 @@ AdobeDPSAPI.prototype.addArticleToCollection = function addArticleToCollection(a
     });
   });
 }
-AdobeDPSAPI.prototype.putImage = function putImage(entity, imagePath, type, callback) {
+AEMMobileAPI.prototype.putImage = function putImage(entity, imagePath, type, callback) {
   var imageFile = fs.statSync(imagePath);
   var fileSize = imageFile["size"];
   var uploadId = uuid.v4();
@@ -434,8 +434,8 @@ AdobeDPSAPI.prototype.putImage = function putImage(entity, imagePath, type, call
     });
   });
 }
-AdobeDPSAPI.prototype.putArticleImage = function putArticleImage(article, imagePath, callback) {
+AEMMobileAPI.prototype.putArticleImage = function putArticleImage(article, imagePath, callback) {
   this.putImage(article, imagePath, "thumbnail", callback);
 }
 
-module.exports = AdobeDPSAPI;
+module.exports = AEMMobileAPI;
