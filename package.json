@@ -1,7 +1,7 @@
 {
   "name": "aem-mobile-api",
   "description": "Library to access AEM Mobile's API",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "homepage": "https://github.com/SixDimensions/aem-mobile-api-js",
   "main": "aem-mobile-api.js",
   "author": {
@@ -33,6 +33,9 @@
     "q": "^1.4.1",
     "restler": "^3.3.0"
   },
+  "files": [
+    "aem-mobile-api.js"
+  ],
   "devDependencies": {},
   "keywords": [
     "aem",
