@@ -261,7 +261,6 @@ AEMMobileAPI.prototype.publish = function publish(entityUri, unpublish) {
     promises.push(
       self.publicationGet(entityName)
       .then(function processEntity(data) {
-        console.log("This far");
         if (typeof data.code !== "undefined" && data.code.indexOf("Exception") > -1) {
           console.log('Error: ' + data.message + " (" + data.code + ")");
         }
