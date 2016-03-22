@@ -25,7 +25,8 @@
     "node": ">= 0.8.0"
   },
   "scripts": {
-    "test": "jasmine"
+    "test": "jasmine",
+    "prepublish": "./node_modules/.bin/jsdoc -c jsdoc.conf"
   },
   "dependencies": {
     "lodash": "^3.10.1",
@@ -34,9 +35,13 @@
     "restler": "^3.3.0"
   },
   "files": [
-    "aem-mobile-api.js"
+    "aem-mobile-api.js",
+    "docs"
   ],
-  "devDependencies": {},
+  "devDependencies": {
+    "ink-docstrap": "^1.1.4",
+    "jsdoc": "^3.4.0"
+  },
   "keywords": [
     "aem",
     "aem mobile",

@@ -4,6 +4,12 @@ var fs = require('fs');
 var _ = require('lodash');
 var q = require('q');
 
+/**
+ * Creates a new API object with the given credentials object.
+ * @constructor
+ * @param {Object} credentials - Contains `client_id`, `client_secret`,
+ * `device_id`, `device_secret`, and `publication_id`.
+ */
 function AEMMobileAPI(credentials) {
   this.options = {
     publish: {
@@ -23,6 +29,17 @@ function AEMMobileAPI(credentials) {
   this.sessionId = uuid.v4();
   this.rest = rest;
 }
+/**
+ * Utility method used to generate a set of headers that can be passed to
+ * AEM Mobile's REST API.
+ * Header properties that are passed into the function override any standard
+ * headers that would be generated.
+ * @param  {Object} options - Key-value headers that will be merged into a set
+ * of standard headers and returned. The options object takes precedence over
+ * the standard headers.
+ * @return {Object} - Merged object with standard header values overwritten by
+ * any options properties.
+ */
 AEMMobileAPI.prototype.standardHeaders = function standardHeaders(options) {
   var headers = {
     "X-DPS-Client-Version": '0.0.1',
@@ -37,6 +54,19 @@ AEMMobileAPI.prototype.standardHeaders = function standardHeaders(options) {
   }
   return headers;
 }
+/**
+ * A low level function used to make direct HTTP REST requests to the API.
+ * Returns a promise that will reject on any response that includes
+ * `error_code` but not `code`.
+ * @param  {String} type - get, put, del, post, or other methods supported by
+ * restler.
+ * @param  {String} url - The url to send the request to.
+ * @param  {Object} options - An object that will be merged into a default set
+ * of options that includes {@link AEMMobileAPI#standardHeaders} and an
+ * accessToken. The properties of this object will take precedence over the
+ * defaults.
+ * @return {Promise}
+ */
 AEMMobileAPI.prototype.request = function request(type, url, options) {
   var deferred = q.defer();
   var defaultOptions = {
@@ -55,22 +85,42 @@ AEMMobileAPI.prototype.request = function request(type, url, options) {
   });
   return deferred.promise;
 }
-// shortcut function for GET requests to the publication server
+/**
+ * A shortcut function to GET from the current publication. 
+ * @param  {String} entityUri - Partial URI to GET from a publication. 
+ * Should not have a leading slash "/".
+ * @return {Promise}
+ */
 AEMMobileAPI.prototype.publicationGet = function publicationGet(entityUri) {
   var uri = "https://pecs.publish.adobe.io/publication/"+this.credentials.publication_id+"/"+entityUri;
   return this.request('get', uri, {}).then(function(response) { return response.data });
 }
-// shortcut function for DELETE requests to the publication server
+/**
+ * A shortcut function to DELETE from the current publication. 
+ * @param  {String} entityUri - Partial URI to DELETE from a publication.
+ * Should not have a leading slash "/".
+ * @return {Promise}
+ */
 AEMMobileAPI.prototype.publicationDelete = function publicationGet(entityUri) {
   var uri = "https://pecs.publish.adobe.io/publication/"+this.credentials.publication_id+"/"+entityUri;
   return this.request('del', uri, {}).then(function(response) { return response.data });
 }
-// shortcut function for GET requests to the publication server
+/**
+ * A shortcut function to get the status object of a given entity.
+ * @param  {String} entityUri - Partial URI to get the status object for.
+ * Should not have a leading slash "/".
+ * @return {Promise}
+ */
 AEMMobileAPI.prototype.getStatus = function getStatus(entityUri) {
   var uri = "https://pecs.publish.adobe.io/status/"+this.credentials.publication_id+"/"+entityUri;
   return this.request('get', uri, {}).then(function(response) { return response.data });
 }
-// retrieve all publications
+/**
+ * Returns all publications available to the current API user.
+ * @throws {Error} If the response includes a `code` that includes 'Exception'
+ * then it will throw an error, causing the Promise to reject.
+ * @return {Promise}
+ */
 AEMMobileAPI.prototype.getPublications = function getPublications() {
   return this.request(
     'get', 
@@ -85,7 +135,14 @@ AEMMobileAPI.prototype.getPublications = function getPublications() {
     return data;
   });
 }
-// get a new access token
+/**
+ * Returns an object that includes an access_token that can be assigned to the
+ * credentials object for further requests. This function does not set the
+ * API's credentials.access_token property.
+ * @throws {Error} If the response includes a `code` that includes 'Exception'
+ * then it will throw an error, causing the Promise to reject.
+ * @return {Promise}
+ */
 AEMMobileAPI.prototype.getAccessToken = function getAccessToken() {
   var deferred = q.defer();
   this.rest.post(
@@ -110,6 +167,14 @@ AEMMobileAPI.prototype.getAccessToken = function getAccessToken() {
   });
   return deferred.promise;
 }
+/**
+ * Uploads a new article file to an article entity. The promise doesn't return
+ * anything.
+ * @param  {String} articleId - The entityName of the article file that will be
+ * uploaded.
+ * @param  {String} fileName - A path to the .article file to upload.
+ * @return {Promise}
+ */
 AEMMobileAPI.prototype.uploadArticle = function uploadArticle(articleId, fileName) {
   var uri = "article/"+articleId;
   var articleFile = fs.statSync(fileName);
@@ -171,25 +236,67 @@ AEMMobileAPI.prototype.uploadArticle = function uploadArticle(articleId, fileNam
     return checkStatus();
   })
 }
+/**
+ * Returns all permissions for the current API user.
+ * @return {Promise}
+ */
 AEMMobileAPI.prototype.getPermissions = function getPermissions() {
   var uri = "https://authorization.publish.adobe.io/permissions";
   this.request('get', uri, {}).then(function(response) { return response.data });
 }
+/**
+ * Returns the metadata for an article.
+ * @param  {String} articleId - The entityName of the article data to retreive
+ * from AEM Mobile.
+ * @return {Promise}
+ */
 AEMMobileAPI.prototype.getArticle = function getArticle(articleId) {
   return this.publicationGet('article/'+articleId);
 }
+/**
+ * Returns all collections in the current publication.
+ * @return {Promise}
+ */
 AEMMobileAPI.prototype.getCollections = function getCollections() {
   return this.publicationGet('collection');
 }
+/**
+ * Returns the metadata for a collection.
+ * @param  {String} collectionId - The entityName of the collection to retrieve.
+ * @return {Promise}
+ */
 AEMMobileAPI.prototype.getCollection = function getCollection(collectionId) {
   return this.publicationGet('collection/'+collectionId);
 }
+/**
+ * Returns the array of objects referring to entities within a collection.
+ * @param  {Object} collection - The metadata object for a collection. Requires
+ * the `entityName` and `version` properties at a minimum.
+ * @return {Promise}
+ */
 AEMMobileAPI.prototype.getCollectionElements = function getCollectionElements(collection) {
   return this.publicationGet('collection/'+collection.entityName+";version="+collection.version+"/contentElements");
 }
+/**
+ * Shortcut function to {@link AEMMobileAPI#unpublish} that unpublishes the
+ * given entity or entities. Accepts an Array of Strings or a single String.
+ * @param  {Array|String} entityUri - The partial URI(s) for entities to 
+ * unpublish. Does not include a leading slash "/".
+ * @return {Promise}
+ */
 AEMMobileAPI.prototype.unpublish = function unpublish(entityUri) {
   return this.publish(entityUri, true);
 }
+/**
+ * Publishes or unpublishes the given entity or entities. Accepts an
+ * Array of Strings or a single String.
+ * @param  {Array|String} entityUri - The partial URIs for the entity or
+ * entities to publish or unpublish.
+ * @param  {Boolean} unpublish - Unpublishes if truthy.
+ * @return {Promise}
+ * @throws {Error} If any entity cannot be retrieved from the publication
+ * server.
+ */
 AEMMobileAPI.prototype.publish = function publish(entityUri, unpublish) {
   var self = this;
   if (!Array.isArray(entityUri)) {
@@ -299,6 +406,12 @@ AEMMobileAPI.prototype.publish = function publish(entityUri, unpublish) {
     return checkStatus();
   })
 }
+/**
+ * Saves collection metadata to the publication server. Shortcut to 
+ * {@link AEMMobileAPI#putEntity}.
+ * @param  {Object} data - Collection metadata to save.
+ * @return {Promise}
+ */
 AEMMobileAPI.prototype.putCollection = function putCollection(data) {
   if (typeof data.entityType === 'undefined') {
     data.entityType = 'collection';
@@ -312,6 +425,15 @@ AEMMobileAPI.prototype.putCollection = function putCollection(data) {
   data.entityType="collection";
   return this.putEntity(data);
 }
+/**
+ * Saves entity metadata to the publication server.
+ * @param  {Object} data - Entity metadata to save. Adobe server enforces
+ * required properties and property schema, so this method does no property
+ * validation.
+ * @return {Promise}
+ * @throws {Error} If the response includes a `code` value that includes 
+ * 'Exception'.
+ */
 AEMMobileAPI.prototype.putEntity = function putEntity(data) {
   var url = "https://pecs.publish.adobe.io/publication/"+this.credentials.publication_id+"/"+data.entityType+"/"+data.entityName;
   if (data.version) {
@@ -331,6 +453,12 @@ AEMMobileAPI.prototype.putEntity = function putEntity(data) {
     return response;
   });
 }
+/**
+ * Saves article metadata to the publication server. Shortcut to 
+ * {@link AEMMobileAPI#putEntity}.
+ * @param  {Object} data - Article metadata to save.
+ * @return {Promise}
+ */
 AEMMobileAPI.prototype.putArticle = function putArticle(data) {
   if (typeof data.accessState === 'undefined') { 
     data.accessState = 'free';
@@ -350,6 +478,13 @@ AEMMobileAPI.prototype.putArticle = function putArticle(data) {
   data.entityType="article";
   return this.putEntity(data);
 }
+/**
+ * Adds an article to a collection, both by `entityName`.
+ * @param {String} articleId - Article `entityName` to add to the collection.
+ * @param {String} collectionId - Collection `entityName` to add an article to.
+ * @return {Promise}
+ * @throws {Error} If retrieving the collection or article fails.
+ */
 AEMMobileAPI.prototype.addArticleToCollection = function addArticleToCollection(articleId, collectionId) {
   var self = this;
   var contentElements;
@@ -392,6 +527,17 @@ AEMMobileAPI.prototype.addArticleToCollection = function addArticleToCollection(
     return response.data;
   });
 }
+/**
+ * @param  {Object} entity - An entity metadata object. Required the `_links`, 
+ * `entityType`, and `entityName` properties.
+ * @param  {String} imagePath - Path to an image file to upload.
+ * @param  {String} type - Either `background` or `thumbnail`.
+ * @return {Promise}
+ * @throws {Error} If type is not `background` or `thumbnail`. This occurs
+ * before the return of the Promise.
+ * @throws {Error} If retrieving or saving the entity fails.
+ * @throws {Error} If sealing the image fails.
+ */
 AEMMobileAPI.prototype.putImage = function putImage(entity, imagePath, type) {
   var imageFile = fs.statSync(imagePath);
   var fileSize = imageFile["size"];
@@ -452,6 +598,13 @@ AEMMobileAPI.prototype.putImage = function putImage(entity, imagePath, type) {
     return data;
   });
 }
+/**
+ * Shortcut method to {@link AEMMobileAPI#putImage} which uploads an image to
+ * an article with the type `thumbnail`.
+ * @param  {Object} article - Article metadata object.
+ * @param  {String} imagePath - Path to an image file to upload.
+ * @return {Promise}
+ */
 AEMMobileAPI.prototype.putArticleImage = function putArticleImage(article, imagePath) {
   return this.putImage(article, imagePath, "thumbnail");
 }
