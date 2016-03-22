@@ -263,6 +263,7 @@ AEMMobileAPI.prototype.publish = function publish(entityUri, unpublish) {
       .then(function processEntity(data) {
         if (typeof data.code !== "undefined" && data.code.indexOf("Exception") > -1) {
           console.log('Error: ' + data.message + " (" + data.code + ")");
+          throw new Error(data.message + " (" + data.code + ")")
         }
         if (typeof data.version !== "undefined") {
           body.entities.push("/publication/"+self.credentials.publication_id+"/"+data.entityType+"/"+data.entityName+";version="+data.version);
