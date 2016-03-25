@@ -5,6 +5,22 @@ var _ = require('lodash');
 var q = require('q');
 
 /**
+ * Error that is thrown for responses from the adobe API that include a `code` or `error_code`
+ * @param {String} message  The exception error message
+ * @param {Object} response The response from the server
+ * @param {Object} data     Any additional data useful for debugging
+ */
+function APIError(message, response, data) {
+  this.name = 'APIError';
+  this.message = message || 'There was an API Error';
+  this.response = response;
+  this.data = data;
+  this.stack = (new Error()).stack;
+}
+APIError.prototype = Object.create(Error.prototype);
+APIError.prototype.constructor = APIError;
+
+/**
  * Creates a new API object with the given credentials object.
  * @constructor
  * @param {Object} credentials - Contains `client_id`, `client_secret`,
@@ -79,7 +95,7 @@ AEMMobileAPI.prototype.request = function request(type, url, options) {
   )
   .on('complete', function(data, other) {
     if (typeof data.error_code !== "undefined") {
-      deferred.reject(new Error(data.error_code + " " + data.message));
+      deferred.reject(new APIError(data.error_code + " " + data.message, data, options));
     }
     deferred.resolve({data: data, other: other});
   });
@@ -130,7 +146,7 @@ AEMMobileAPI.prototype.getPublications = function getPublications() {
   .then(function(response) {
     var data = response.data;
     if (typeof data.code !== "undefined" && data.code.indexOf("Exception") > -1) {
-      throw new Error(data.message + " (" + data.code + ")");
+      throw new APIError(data.message + " (" + data.code + ")", response, data);
     }
     return data;
   });
@@ -161,7 +177,7 @@ AEMMobileAPI.prototype.getAccessToken = function getAccessToken() {
   )
   .on('complete', function(data) {
     if (typeof data.code !== "undefined" && data.code.indexOf("Exception") > -1) {
-      deferred.reject(new Error(data.message + " (" + data.code + ")"));
+      deferred.reject(new APIError(data.message + " (" + data.code + ")", data, false));
     }
     deferred.resolve(data);
   });
@@ -370,7 +386,7 @@ AEMMobileAPI.prototype.publish = function publish(entityUri, unpublish) {
       .then(function processEntity(data) {
         if (typeof data.code !== "undefined" && data.code.indexOf("Exception") > -1) {
           console.log('Error: ' + data.message + " (" + data.code + ")");
-          throw new Error(data.message + " (" + data.code + ")")
+          throw new APIError(data.message + " (" + data.code + ")", data, false)
         }
         if (typeof data.version !== "undefined") {
           body.entities.push("/publication/"+self.credentials.publication_id+"/"+data.entityType+"/"+data.entityName+";version="+data.version);
@@ -448,7 +464,7 @@ AEMMobileAPI.prototype.putEntity = function putEntity(data) {
   return this.request('put', url, requestOptions).then(function(response) {
     response = response.data;
     if (typeof response.code !== "undefined" && response.code.indexOf("Exception") > -1) {
-      throw new Error(response.message + " (" + response.code + ")");
+      throw new APIError(response.message + " (" + response.code + ")", response, false);
     }
     return response;
   });
@@ -494,13 +510,13 @@ AEMMobileAPI.prototype.addArticleToCollection = function addArticleToCollection(
       throw new Error("Collection " + collectionId + " not found.");
     }
     if (typeof collection.code !== "undefined" && collection.code.indexOf("Exception") > -1) {
-      throw new Error(collection.message + " (" + collection.code + ")");
+      throw new APIError(collection.message + " (" + collection.code + ")", collection, collectionId);
     }
     return [collection, self.getCollectionElements(collection), self.getArticle(articleId)];
   })
   .spread(function(collection, contentElements, article) {
     if (typeof article.code !== "undefined" && article.code.indexOf("Exception") > -1) {
-      throw new Error(article.message + " (" + article.code + ")");
+      throw new APIError(article.message + " (" + article.code + ")", article, false);
     }
     // remove previous versions of the article if they exist
     for(var i = 0; i < contentElements.length; i++) {
@@ -565,7 +581,7 @@ AEMMobileAPI.prototype.putImage = function putImage(entity, imagePath, type) {
   })
   .then(function(entity) {
     if (typeof entity.code !== "undefined" && entity.code.indexOf("Exception") > -1) {
-      throw new Error(entity.message + " (" + entity.code + ")");
+      throw new APIError(entity.message + " (" + entity.code + ")", entity, false);
     }
     // add the reference to the content we just created
     entity['_links'][type] = { href: 'contents/images/'+type };
@@ -573,7 +589,7 @@ AEMMobileAPI.prototype.putImage = function putImage(entity, imagePath, type) {
   })
   .then(function(data) {
     if (typeof data.code !== "undefined" && data.code.indexOf("Exception") > -1) {
-      throw new Error(data.message + " (" + data.code + ")");
+      throw new APIError(data.message + " (" + data.code + ")", data, false);
     }
     // get the new version for the entity
     return self.publicationGet(entity.entityType+"/"+entity.entityName);
@@ -593,7 +609,7 @@ AEMMobileAPI.prototype.putImage = function putImage(entity, imagePath, type) {
   .then(function(response) {
     var data = response.data;
     if (typeof data.code !== "undefined" && data.code.indexOf("Exception") > -1) {
-      throw new Error(data.message + " (" + data.code + ")");
+      throw new APIError(data.message + " (" + data.code + ")", response, data);
     }
     return data;
   });
