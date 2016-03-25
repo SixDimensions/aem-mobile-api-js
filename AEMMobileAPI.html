@@ -228,6 +228,80 @@
     
 
     
+        <h3 class="subsection-title">Members</h3>
+
+        <dl>
+            
+<hr>
+<dt class="name" id="putArticleImage">
+    <h4><span class="type-signature"></span>putArticleImage<span class="type-signature"></span></h4>
+
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        <p>Shortcut method to <a href="AEMMobileAPI.html#putImage">AEMMobileAPI#putImage</a> which uploads an image to
+an article with the type <code>thumbnail</code>.</p>
+    </div>
+    
+
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+	<dt class="important tag-deprecated method-doc-label method-doc-details-label">Deprecated:</dt>
+	
+    <dd>
+        <ul class="dummy">
+            <li>Use <a href="AEMMobileAPI.html#putEntityThumbnail">AEMMobileAPI#putEntityThumbnail</a> instead.</li>
+        </ul>
+    </dd>
+    
+    
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+</dd>
+
+        </dl>
+    
 
     
         <h3 class="subsection-title">Methods</h3>
@@ -296,7 +370,7 @@
 
             
 
-            <td class="description last"><p>Article <code>entityName</code> to add to the collection.</p></td>
+            <td class="description last"><p>Article by <code>entityName</code> to add to the collection.</p></td>
         </tr>
 
     
@@ -320,7 +394,216 @@
 
             
 
-            <td class="description last"><p>Collection <code>entityName</code> to add an article to.</p></td>
+            <td class="description last"><p>Collection by <code>entityName</code> to add to.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+	<dt class="important tag-deprecated method-doc-label method-doc-details-label">Deprecated:</dt>
+	
+    <dd>
+        <ul class="dummy">
+            <li>Use <a href="AEMMobileAPI.html#addEntitiesToCollection">AEMMobileAPI#addEntitiesToCollection</a> instead.</li>
+        </ul>
+    </dd>
+    
+    
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
+    <h5>Throws:</h5>
+    
+            
+
+<dl>
+    <dt>
+        <div class="param-desc">
+        <p>If retrieving the collection or article fails.</p>
+        </div>
+    </dt>
+    <dt>
+        <dl>
+            <dt>
+                Type
+            </dt>
+            <dd>
+                
+<span class="param-type">Error</span>
+
+
+
+            </dd>
+        </dl>
+    </dt>
+</dl>
+
+
+        
+
+    
+    <h5>Returns:</h5>
+    
+            
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise</span>
+
+
+
+    </dd>
+</dl>
+
+
+        
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id="addEntitiesToCollection"><span class="type-signature"></span>addEntitiesToCollection(entityIds, collectionId)</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>Adds an array of entities to a collection, both by <code>entityName</code>.</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>entityIds</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Array of <code>entityType/entityName</code> to add to the collection.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>collectionId</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Collection by <code>entityName</code> to add to.</p></td>
         </tr>
 
     
@@ -385,7 +668,7 @@
 <dl>
     <dt>
         <div class="param-desc">
-        <p>If retrieving the collection or article fails.</p>
+        <p>If retrieving the collection or entities fails, or if there is a failure to submit the new <code>collection.contentElements</code>.</p>
         </div>
     </dt>
     <dt>
@@ -2136,179 +2419,6 @@ server.</p>
             
 <hr>
 <dt>
-    <h4 class="name" id="putArticleImage"><span class="type-signature"></span>putArticleImage(article, imagePath)</h4>
-    
-    
-</dt>
-<dd>
-
-    
-    <div class="description">
-        <p>Shortcut method to <a href="AEMMobileAPI.html#putImage">AEMMobileAPI#putImage</a> which uploads an image to
-an article with the type <code>thumbnail</code>.</p>
-    </div>
-    
-
-    
-
-    
-
-    
-    
-        <h5>Parameters:</h5>
-        
-
-<table class="params table table-striped">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>article</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">Object</span>
-
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>Article metadata object.</p></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>imagePath</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">String</span>
-
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>Path to an image file to upload.</p></td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-    
-
-    
-<dl class="details">
-    
-
-	
-
-	
-
-	
-
-    
-
-    
-
-    
-
-    
-
-	
-
-	
-
-	
-
-	
-
-	
-
-
-
-	
-
-	
-
-	
-
-	
-</dl>
-
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <h5>Returns:</h5>
-    
-            
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">Promise</span>
-
-
-
-    </dd>
-</dl>
-
-
-        
-
-    
-</dd>
-
-        
-            
-<hr>
-<dt>
     <h4 class="name" id="putCollection"><span class="type-signature"></span>putCollection(data)</h4>
     
     
@@ -2607,6 +2717,179 @@ validation.</p></td>
 
 
         
+
+    
+    <h5>Returns:</h5>
+    
+            
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise</span>
+
+
+
+    </dd>
+</dl>
+
+
+        
+
+    
+</dd>
+
+        
+            
+<hr>
+<dt>
+    <h4 class="name" id="putEntityThumbnail"><span class="type-signature"></span>putEntityThumbnail(entity, imagePath)</h4>
+    
+    
+</dt>
+<dd>
+
+    
+    <div class="description">
+        <p>Shortcut method to <a href="AEMMobileAPI.html#putImage">AEMMobileAPI#putImage</a> which uploads an image to
+an entity with the type <code>thumbnail</code>.</p>
+    </div>
+    
+
+    
+
+    
+
+    
+    
+        <h5>Parameters:</h5>
+        
+
+<table class="params table table-striped">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>entity</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Entity metadata object.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>imagePath</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Path to an image file to upload.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+    
+
+    
+<dl class="details">
+    
+
+	
+
+	
+
+	
+
+    
+
+    
+
+    
+
+    
+
+	
+
+	
+
+	
+
+	
+
+	
+
+
+
+	
+
+	
+
+	
+
+	
+</dl>
+
+
+    
+
+    
+
+    
+
+    
+
+    
 
     
     <h5>Returns:</h5>
@@ -3644,7 +3927,7 @@ uploaded.</p></td>
 <span class="jsdoc-message">
 	Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a>
 	
-		on 2016-03-25T12:03:56-04:00
+		on 2016-03-25T19:17:37-04:00
 	
 	using the <a href="https://github.com/docstrap/docstrap">DocStrap template</a>.
 </span>
