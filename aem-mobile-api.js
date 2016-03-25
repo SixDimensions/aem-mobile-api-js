@@ -496,38 +496,65 @@ AEMMobileAPI.prototype.putArticle = function putArticle(data) {
 }
 /**
  * Adds an article to a collection, both by `entityName`.
- * @param {String} articleId - Article `entityName` to add to the collection.
- * @param {String} collectionId - Collection `entityName` to add an article to.
+ * @param {String} articleId - Article by `entityName` to add to the collection.
+ * @param {String} collectionId - Collection by `entityName` to add to.
  * @return {Promise}
  * @throws {Error} If retrieving the collection or article fails.
+ * @deprecated Use {@link AEMMobileAPI#addEntitiesToCollection} instead.
  */
 AEMMobileAPI.prototype.addArticleToCollection = function addArticleToCollection(articleId, collectionId) {
+  return this.addEntitiesToCollection(["article/"+articleId], collectionId);
+}
+/**
+ * Adds an array of entities to a collection, both by `entityName`.
+ * @param {Array} entityIds - Array of `entityType/entityName` to add to the collection.
+ * @param {String} collectionId - Collection by `entityName` to add to.
+ * @return {Promise}
+ * @throws {Error} If retrieving the collection or entities fails, or if there is a failure to submit the new `collection.contentElements`.
+ */
+AEMMobileAPI.prototype.addEntitiesToCollection = function addEntitiesToCollection(entityIds, collectionId) {
   var self = this;
   var contentElements;
-  return this.getCollection(collectionId)
-  .then(function(collection) {
+  return q.all(entityIds.map(function(entityId) {
+    return self.publicationGet(entityId);
+  }))
+  .then(function(entities) {
+    // make sure all our entities returned safely
+    entities.forEach(function(entity, index) {
+      if (entity.code === 'EntityNotFoundException') {
+        throw new Error("Entity " + entityIds[index] + " not found.");
+      }
+      if (typeof entity.code !== "undefined" && entity.code.indexOf("Exception") > -1) {
+        throw new APIError(entity.message + " (" + entity.code + ")", entity, entityIds[index]);
+      }
+    });
+    return [entities, self.getCollection(collectionId)];
+  })
+  .spread(function(entities, collection) {
     if (collection.code === 'EntityNotFoundException') {
       throw new Error("Collection " + collectionId + " not found.");
     }
     if (typeof collection.code !== "undefined" && collection.code.indexOf("Exception") > -1) {
       throw new APIError(collection.message + " (" + collection.code + ")", collection, collectionId);
     }
-    return [collection, self.getCollectionElements(collection), self.getArticle(articleId)];
+    return [entities, collection, self.getCollectionElements(collection)];
   })
-  .spread(function(collection, contentElements, article) {
-    if (typeof article.code !== "undefined" && article.code.indexOf("Exception") > -1) {
-      throw new APIError(article.message + " (" + article.code + ")", article, false);
-    }
-    // remove previous versions of the article if they exist
-    for(var i = 0; i < contentElements.length; i++) {
-      if (contentElements[i].href.match('article/'+article.entityName+';')) {
-        contentElements.splice(i, 1);
-      }
+  .spread(function(entities, collection, contentElements) {
+    if (typeof contentElements.code !== "undefined" && contentElements.code.indexOf("Exception") > -1) {
+      throw new APIError(contentElements.message + " (" + contentElements.code + ")", contentElements, false);
     }
     if (typeof contentElements === 'undefined' || typeof contentElements.length === 'undefined') {
       contentElements = [];
     }
-    contentElements.push( { href: '/publication/'+self.credentials.publication_id+'/article/'+article.entityName+';version='+article.version } );
+    entities.forEach(function(entity) {
+      // remove previous versions of the entity if they exist
+      for(var i = 0; i < contentElements.length; i++) {
+        if (contentElements[i].href.match(entity.entityType+'/'+entity.entityName+';')) {
+          contentElements.splice(i, 1);
+        }
+      }
+      contentElements.push( { href: '/publication/'+self.credentials.publication_id+'/'+entity.entityType+'/'+entity.entityName+';version='+entity.version } );
+    });
     return self.request( 
       'put', 
       "https://pecs.publish.adobe.io/publication/"+self.credentials.publication_id+'/collection/'+collection.entityName+";version="+collection.version+"/contentElements", 
@@ -616,13 +643,22 @@ AEMMobileAPI.prototype.putImage = function putImage(entity, imagePath, type) {
 }
 /**
  * Shortcut method to {@link AEMMobileAPI#putImage} which uploads an image to
+ * an entity with the type `thumbnail`.
+ * @param  {Object} entity - Entity metadata object.
+ * @param  {String} imagePath - Path to an image file to upload.
+ * @return {Promise}
+ */
+AEMMobileAPI.prototype.putEntityThumbnail = function putEntityThumbnail(entity, imagePath) {
+  return this.putImage(entity, imagePath, "thumbnail");
+}
+/**
+ * Shortcut method to {@link AEMMobileAPI#putImage} which uploads an image to
  * an article with the type `thumbnail`.
  * @param  {Object} article - Article metadata object.
  * @param  {String} imagePath - Path to an image file to upload.
  * @return {Promise}
+ * @deprecated Use {@link AEMMobileAPI#putEntityThumbnail} instead.
  */
-AEMMobileAPI.prototype.putArticleImage = function putArticleImage(article, imagePath) {
-  return this.putImage(article, imagePath, "thumbnail");
-}
+AEMMobileAPI.prototype.putArticleImage = AEMMobileAPI.prototype.putEntityThumbnail;
 
 module.exports = AEMMobileAPI;

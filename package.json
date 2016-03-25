@@ -26,7 +26,8 @@
   },
   "scripts": {
     "test": "jasmine",
-    "postpublish": "./node_modules/.bin/grunt"
+    "prepublish": "./node_modules/.bin/grunt jsdoc",
+    "postpublish": "./node_modules/.bin/grunt gh-pages"
   },
   "dependencies": {
     "lodash": "^3.10.1",

@@ -36,7 +36,7 @@ Open the ./docs/index.html file in your browser for documentation.
 In lieu of a formal styleguide, take care to maintain the existing coding style. Add unit tests for any new or changed functionality.
 
 #### Generating documentation.
-Changes to code should be paired with changes to documentation when necessary. Pull requests should include recompiled documentation. To recompile documentation, run `npm run-script postpublish`.
+Changes to code should be paired with changes to documentation when necessary. Pull requests should include recompiled documentation. To recompile documentation, run `npm run-script prepublish`.
 
 ## Release History
 _(Nothing yet)_

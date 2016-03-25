@@ -18,5 +18,5 @@ module.exports = function(grunt) {
 
   grunt.loadNpmTasks('grunt-gh-pages');
   grunt.loadNpmTasks('grunt-jsdoc');
-  grunt.registerTask('default', ['jsdoc', 'gh-pages']);
+  grunt.registerTask('default', ['jsdoc']);
 };
