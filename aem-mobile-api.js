@@ -1,5 +1,5 @@
 var rest = require('restler');
-var uuid = require('node-uuid');
+var uuid = require('uuid');
 var fs = require('fs');
 var _ = require('lodash');
 var q = require('q');
