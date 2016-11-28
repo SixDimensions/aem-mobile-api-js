@@ -31,9 +31,9 @@
   },
   "dependencies": {
     "lodash": "^4.11.0",
-    "node-uuid": "^1.4.3",
     "q": "^1.4.1",
-    "restler": "^3.4.0"
+    "restler": "^3.4.0",
+    "uuid": "^3.0.0"
   },
   "files": [
     "aem-mobile-api.js",
