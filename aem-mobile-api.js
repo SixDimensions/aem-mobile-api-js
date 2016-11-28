@@ -45,6 +45,7 @@ function AEMMobileAPI(credentials) {
   this.sessionId = uuid.v4();
   this.rest = rest;
 }
+AEMMobileAPI.APIError = APIError;
 /**
  * Utility method used to generate a set of headers that can be passed to
  * AEM Mobile's REST API.

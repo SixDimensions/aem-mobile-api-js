@@ -1,4 +1,5 @@
-var AdobeDPSAPI = require('../AdobeDPSAPI.js');
+var AEMMobileAPI = require('../aem-mobile-api.js');
+var APIError = AEMMobileAPI.APIError;
 var RestlerMock = require('./RestlerMock.js');
 
 function createValidationFunction(done, expected) {
@@ -18,10 +19,10 @@ function doRequestEvaluation(args) {
   request.complete(args.expectedData);
 }
 
-describe('AdobeDPSAPI', function() {
+describe('aem-mobile-api', function() {
   var api;
   beforeEach(function() {
-    api = new AdobeDPSAPI({
+    api = new AEMMobileAPI({
       publication_id: 'publicationid',
       client_id: 'cid',
       client_secret: 'csecret',
@@ -35,7 +36,7 @@ describe('AdobeDPSAPI', function() {
   });
   it('creates a session id and populates credentials object', function() {
     expect(api.sessionId).toBeDefined();
-    expect((new AdobeDPSAPI({test: true})).credentials.test).toEqual(true);
+    expect((new AEMMobileAPI({test: true})).credentials.test).toEqual(true);
   });
   describe('standardHeaders', function() {
     it('outputs necessary headers for most requests', function() {
@@ -58,7 +59,7 @@ describe('AdobeDPSAPI', function() {
   });
   describe('request', function() {
     it('should call to the given rest function with standard headers', function() {
-      api.request('get', 'url', {}, function(){});
+      var promise = api.request('get', 'url', {}, function(){});
       var optionsExpected = {
         headers: api.standardHeaders(),
         accessToken: api.credentials.access_token
@@ -67,16 +68,20 @@ describe('AdobeDPSAPI', function() {
       optionsExpected.headers = jasmine.objectContaining(optionsExpected.headers);
       expect(api.rest.get).toHaveBeenCalledWith("url", jasmine.objectContaining(optionsExpected));
     });
-    it('should fail on responses that include error_code', function() {
-      api.request('get', 'url', {}, function(){});
+    it('should fail on responses that include error_code', function(done) {
+      var promise = api.request('get', 'url', {}, function(){});
       var request = api.rest.requests.pop();
-      expect(function() {request.complete({error_code: '100', message: 'test'})}).toThrow(new Error("100 test"));
+      request.complete({error_code: '100', message: 'test'})
+      promise.catch(function(error) {
+        expect(error).toEqual(jasmine.any(APIError));
+        done();
+      });
     });
   });
   describe('getPublications', function() {
     it('should call out to the auth endpoint and callback with the response', function(done) {
       var expected = { publications: [] };
-      api.getPublications(createValidationFunction(done, expected));
+      api.getPublications().then(createValidationFunction(done, expected));
       doRequestEvaluation({
         api: api,
         done: done,
@@ -92,20 +97,25 @@ describe('AdobeDPSAPI', function() {
     });
     it('should throw an exception on an error return', function() {
       var error = { code: 'TestException', message: 'test' };
-      api.getPublications(function(data) {});
+      var promise = api.getPublications(function(data) {});
       var request = api.rest.requests.pop();
-      expect(function() {request.complete(error);}).toThrow(new Error("test (TestException)"));
+      promise.catch(function(error) {
+        expect(error).toEqual(jasmine.any(APIError));
+        done();
+      });
+      request.complete(error);
     });
   });
   describe('getAccessToken', function() {
     it('should call out to the auth endpoint and callback with the response', function(done) {
       var expected = { access_token: 'test', refresh_token: 'refresh' };
       var expectedUrl = "https://ims-na1.adobelogin.com/ims/token/v1/?grant_type=device"+
+        "&scope=AdobeID,openid"+
         "&client_id="+api.credentials.client_id+
         '&client_secret='+api.credentials.client_secret+
         '&device_token='+api.credentials.device_secret+
         '&device_id='+api.credentials.device_id;
-      api.getAccessToken(createValidationFunction(done, expected));
+      api.getAccessToken().then(createValidationFunction(done, expected));
       doRequestEvaluation({
         api: api,
         done: done,
@@ -119,11 +129,15 @@ describe('AdobeDPSAPI', function() {
         }
       });
     });
-    it('should throw an exception on an error return', function() {
+    it('should throw an exception on an error return', function(done) {
       var error = { code: 'TestException', message: 'test' };
-      api.getAccessToken(function(data) {});
+      var promise = api.getAccessToken(function(data) {});
       var request = api.rest.requests.pop();
-      expect(function() {request.complete(error);}).toThrow(new Error("test (TestException)"));
+      promise.catch(function(error) {
+        expect(error).toEqual(jasmine.any(APIError));
+        done();
+      })
+      request.complete(error);
     });
   });
 })
