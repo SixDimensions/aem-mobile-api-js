@@ -185,6 +185,17 @@ AEMMobileAPI.prototype.getAccessToken = function getAccessToken() {
   return deferred.promise;
 }
 /**
+ * Uploads a new article file to a dynamic banner entity. The promise doesn't return
+ * anything.
+ * @param  {String} entityId - The entityName of the article file that will be
+ * uploaded.
+ * @param  {String} fileName - A path to the .article file to upload.
+ * @return {Promise}
+ */
+AEMMobileAPI.prototype.uploadDynamicBanner = function uploadDynamicBanner(entityId, fileName) {
+  return this.uploadArticleFile("dynamicBanner", entityId, fileName);
+}
+/**
  * Uploads a new article file to an article entity. The promise doesn't return
  * anything.
  * @param  {String} articleId - The entityName of the article file that will be
@@ -193,7 +204,20 @@ AEMMobileAPI.prototype.getAccessToken = function getAccessToken() {
  * @return {Promise}
  */
 AEMMobileAPI.prototype.uploadArticle = function uploadArticle(articleId, fileName) {
-  var uri = "article/"+articleId;
+  return this.uploadArticleFile("article", articleId, fileName);
+}
+/**
+ * Uploads a new article file to an entity. The promise doesn't return
+ * anything.
+ * @param  {String} entityType - The entityName to which the .article file will be
+ * uploaded.
+ * @param  {String} entityId - The entityName to which the .article file will be
+ * uploaded.
+ * @param  {String} fileName - A path to the .article file to upload.
+ * @return {Promise}
+ */
+AEMMobileAPI.prototype.uploadArticleFile = function uploadArticle(entityType, entityId, fileName) {
+  var uri = entityType+"/"+entityId;
   var articleFile = fs.statSync(fileName);
   var fileSize = articleFile["size"];
   var lastIngestTime = 0;
@@ -260,6 +284,15 @@ AEMMobileAPI.prototype.uploadArticle = function uploadArticle(articleId, fileNam
 AEMMobileAPI.prototype.getPermissions = function getPermissions() {
   var uri = "https://authorization.publish.adobe.io/permissions";
   this.request('get', uri, {}).then(function(response) { return response.data });
+}
+/**
+ * Returns the metadata for a dynamic banner.
+ * @param  {String} articleId - The entityName of the dynamic banner data to retreive
+ * from AEM Mobile.
+ * @return {Promise}
+ */
+AEMMobileAPI.prototype.getDynamicBanner = function getDynamicBanner(dynamicBannerId) {
+  return this.publicationGet('dynamicBanner/'+dynamicBannerId);
 }
 /**
  * Returns the metadata for an article.
@@ -471,6 +504,25 @@ AEMMobileAPI.prototype.putEntity = function putEntity(data) {
   });
 }
 /**
+ * Saves dyanmic banner metadata to the publication server. Shortcut to 
+ * {@link AEMMobileAPI#putEntity}.
+ * @param  {Object} data - Article metadata to save.
+ * @return {Promise}
+ */
+AEMMobileAPI.prototype.putDynamicBanner = function putDynamicBanner(data) {
+  if (typeof data.adType === 'undefined') {
+    data.adType = 'static';
+  }
+  if (typeof data.importance === 'undefined') {
+    data.importance = 'normal';
+  }
+  if (typeof data.title === 'undefined') {
+    data.title = data.entityName;
+  }
+  data.entityType = "dynamicBanner";
+  return this.putEntity(data);
+}
+/**
  * Saves article metadata to the publication server. Shortcut to 
  * {@link AEMMobileAPI#putEntity}.
  * @param  {Object} data - Article metadata to save.
@@ -483,16 +535,13 @@ AEMMobileAPI.prototype.putArticle = function putArticle(data) {
   if (typeof data.adType === 'undefined') {
     data.adType = 'static';
   }
-  if (typeof data.entityType === 'undefined') {
-    data.entityType = 'article';
-  }
   if (typeof data.importance === 'undefined') {
     data.importance = 'normal';
   }
   if (typeof data.title === 'undefined') {
     data.title = data.entityName;
   }
-  data.entityType="article";
+  data.entityType = "article";
   return this.putEntity(data);
 }
 /**

@@ -1,12 +1,12 @@
 {
   "name": "aem-mobile-api",
   "description": "Library to access AEM Mobile's API",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "homepage": "https://github.com/SixDimensions/aem-mobile-api-js",
   "main": "aem-mobile-api.js",
   "author": {
-    "name": "Charlie Wagner",
-    "email": "charlie.wagner@6dglobal.com"
+    "name": "Cecelia Wren",
+    "email": "cecelia.wren@6dglobal.com"
   },
   "repository": {
     "type": "git",
